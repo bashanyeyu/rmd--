@@ -1,0 +1,290 @@
+---
+title: "masterlist2"
+output: html_document
+---
+## Deviation
+
+比较少量项目（或类别）之间的数值变化与固定参考值的比较；依赖于设定的固定值，以此进行区分
+
+### 发散性条形图（Diverging bars）
+
+Diverging Bars是一个可以处理负值和正值的条形图。这可以通过使用geom_bar()来实现。但是geom_bar()的用法可能会很混乱。这是因为，它既可以用来制作条形图，也可以用来制作直方图。条形图的X轴为类别变量不连续，直方图的X轴为连续变量（即使可能分段）。
+
+默认情况下，geom_bar()的统计值设置为计数。这意味着，当你只提供一个连续的X变量(没有Y变量)时，它就会试图将数据做成一个直方图。创建条形图而不是直方图，你需要;
+
+    设置stat=identity
+    在aes()中提供x和y，其中x是字符或因子，y是数值。
+
+为了确保你得到的是发散的条形变量，而不是只有条形变量，请确保你的分类变量有2个类别，在连续变量的某一阈值上有2个变化。在下面的例子中，mtcars数据集中的mpg是通过计算z值来归一化的。那些mpg高于0的车辆被标记为绿色，低于0的车辆被标记为红色。
+
+```{r}
+library(ggplot2)
+theme_set(theme_bw())  
+
+# Data Prep
+data("mtcars")  # load data
+mtcars$`car name` <- rownames(mtcars)  
+mtcars$mpg_z <- round((mtcars$mpg - mean(mtcars$mpg))/sd(mtcars$mpg), 2)  # 标准化
+mtcars$mpg_type <- ifelse(mtcars$mpg_z < 0, "below", "above")  
+mtcars <- mtcars[order(mtcars$mpg_z), ]  # 排序
+mtcars$`car name` <- factor(mtcars$`car name`, levels = mtcars$`car name`)
+
+ggplot(mtcars, aes(x=`car name`, y=mpg_z, label=mpg_z)) + 
+  geom_bar(stat='identity', aes(fill=mpg_type), width=.5)  +
+  scale_fill_manual(name="Mileage", 
+                    labels = c("Above Average", "Below Average"), 
+                    values = c("above"="#00ba38", "below"="#f8766d")) + 
+  labs(subtitle="Normalised mileage from 'mtcars'", 
+       title= "Diverging Bars") + 
+  coord_flip()
+```
+
+
+### Diverging Lollipop Chart
+
+Diverging Lollipop Chart传达的信息与条形图和发散条形图相同。只是它看起来更现代。我用geom_bar来代替geom_point和geom_segment来完成Lollipop Chart。让我们用我在前面的发散条形图的例子中准备的数据画一个 Lollipop Chart。
+
+```{r}
+library(ggplot2)
+theme_set(theme_bw())
+
+ggplot(mtcars, aes(x=`car name`, y=mpg_z, label=mpg_z)) + 
+  geom_point(stat='identity', fill="black", size=6)  +
+  geom_segment(aes(y = 0, 
+                   x = `car name`, 
+                   yend = mpg_z, 
+                   xend = `car name`), 
+               color = "black") +
+  geom_text(color="white", size=2) +
+  labs(title="Diverging Lollipop Chart", 
+       subtitle="Normalized mileage from 'mtcars': Lollipop") + 
+  ylim(-2.5, 2.5) +
+  coord_flip()
+```
+
+## 哑铃图
+
+哑铃图是一个很好的工具，需要注意：
+1. 可视化两个时间点之间的相对位置（如增长和下降）。
+2.比较两类之间的距离。
+3.为了得到正确的哑铃图的顺序，Y变量应该是一个因数，而且因数变量的级别应该和它在图中出现的顺序相同。
+
+```{r}
+library(ggplot2)
+library(ggalt)
+theme_set(theme_classic())
+
+health <- read.csv("https://raw.githubusercontent.com/selva86/datasets/master/health.csv")
+health$Area <- factor(health$Area, levels=as.character(health$Area))  # for right ordering of the dumbells
+
+# health$Area <- factor(health$Area)
+gg <- ggplot(health, aes(x=pct_2013, xend=pct_2014, y=Area, group=Area)) + 
+        geom_dumbbell(color="#a3c4dc", 
+                      size=0.75, 
+                      point.colour.l="#0e668b") + 
+        scale_x_continuous() + 
+        labs(x=NULL, 
+             y=NULL, 
+             title="Dumbbell Chart", 
+             subtitle="Pct Change: 2013 vs 2014", 
+             caption="Source: https://github.com/hrbrmstr/ggalt") +
+        theme(plot.title = element_text(hjust=0.5, face="bold"),
+              plot.background=element_rect(fill="#f7f7f7"),
+              panel.background=element_rect(fill="#f7f7f7"),
+              panel.grid.minor=element_blank(),
+              panel.grid.major.y=element_blank(),
+              panel.grid.major.x=element_line(),
+              axis.ticks=element_blank(),
+              legend.position="top",
+              panel.border=element_blank())
+plot(gg)
+```
+
+## 密度图
+
+```{r}
+library(ggplot2)
+theme_set(theme_classic())
+
+# Plot
+g <- ggplot(mpg, aes(cty))
+g + geom_density(aes(fill=factor(cyl)), alpha=0.8) + 
+    labs(title="Density plot", 
+         subtitle="City Mileage Grouped by Number of cylinders",
+         caption="Source: mpg",
+         x="City Mileage",
+         fill="# Cylinders")
+```
+
+## 箱状图
+
+箱状图是研究分布的一个很好的工具。它还可以显示多组内的分布，以及中位数、范围和离群值（如果有的话）。
+
+框内的暗线代表中位数。框的顶部是75%点，框的底部是25%点。线的端点的距离为1.5*IQR，其中IQR或四分位数区间范围（Inter Quartile Range）是指第25和75百分位数之间的距离。在线须之外的点被标记为点，通常被认为是异常值点。
+
+设置varwidth=T可以调整方框的宽度，使其宽度与所包含的观察数成正比。
+
+```{r}
+library(ggplot2)
+theme_set(theme_classic())
+
+# Plot
+g <- ggplot(mpg, aes(class, cty))
+g + geom_boxplot(varwidth=T, fill="plum") + 
+    labs(title="Box plot", 
+         subtitle="City Mileage grouped by Class of vehicle",
+         caption="Source: mpg",
+         x="Class of Vehicle",
+         y="City Mileage")
+```
+
+```{r}
+library(ggthemes)
+g <- ggplot(mpg, aes(class, cty))
+g + geom_boxplot(aes(fill=factor(cyl))) + #按cyl填充颜色
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Box plot", 
+       subtitle="City Mileage grouped by Class of vehicle",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+
+## 小提琴图
+
+小提琴图类似于箱状图，但显示的是组内的密度。没有像boxplots那样提供很多信息（分位数）。可以用geom_violin()来绘制。
+```{r}
+library(ggplot2)
+theme_set(theme_bw())
+
+# plot
+g <- ggplot(mpg, aes(class, cty))
+g + geom_violin() + 
+  labs(title="Violin plot", 
+       subtitle="City Mileage vs Class of vehicle",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+```
+
+
+
+## 构成图
+### 华夫饼图
+
+华夫饼图是一个很好的显示总人口分类构成的方法。虽然没有直接的函数，但可以通过使用geom_tile()函数巧妙地操纵gggplot2来表达。下面的模板应该可以帮助你创建自己的华夫饼。
+
+```{r}
+var <- mpg$class
+
+nrows <- 10
+df <- expand.grid(y = 1:nrows, x = 1:nrows)
+categ_table <- round(table(var) * ((nrows*nrows)/(length(var))))
+
+df$category <- factor(rep(names(categ_table), categ_table))  
+# NOTE: if sum(categ_table) is not 100 (i.e. nrows^2), it will need adjustment to make the sum to 100.
+
+## Plot
+ggplot(df, aes(x = x, y = y, fill = category)) + 
+        geom_tile(color = "black", size = 0.5) +
+        scale_x_continuous(expand = c(0, 0)) +
+        scale_y_continuous(expand = c(0, 0), trans = 'reverse') +
+        scale_fill_brewer(palette = "Set3") +
+        labs(title="Waffle Chart", subtitle="'Class' of vehicles",
+             caption="Source: mpg") + 
+        theme(panel.border = element_rect(size = 2),
+              plot.title = element_text(size = rel(1.2)),
+              axis.text = element_blank(),
+              axis.title = element_blank(),
+              axis.ticks = element_blank(),
+              legend.title = element_blank(),
+              legend.position = "right")
+```
+
+现在可以直接利用waffle函数包进行创建,下边是一个基础图形，更多可见https://github.com/hrbrmstr/waffle
+
+```{r}
+library(waffle)
+parts <- data.frame(
+  names = LETTERS[1:4],
+  vals = c(80, 30, 20, 10)
+)
+
+waffle(parts, rows = 8)
+```
+
+
+
+
+## 树形图
+
+Treemap是一种通过使用嵌套矩形来显示分层数据的好方法。treemapify包提供了必要的函数来将数据转换成所需的格式(treemapify)以及绘制实际的图形(ggplotify)。
+
+为了创建一个treemap，必须使用treemapify()将数据转换为所需的格式。重要的要求是，你的数据必须有一个变量，每个变量必须有一个描述瓷砖面积的变量、填充颜色的变量、有瓷砖标签的变量，最后是父组。
+
+数据格式化完成后，只需在treemapify数据上调用gggplotify()即可。
+
+```{r}
+library(treemap)
+ 
+# Build Dataset
+group <- c(rep("group-1",4),rep("group-2",2),rep("group-3",3))
+subgroup <- paste("subgroup" , c(1,2,3,4,1,2,1,2,3), sep="-")
+value <- c(13,5,22,12,11,7,3,1,23)
+data <- data.frame(group,subgroup,value)
+print(data)
+```
+ 
+ 
+```{r}
+# treemap
+treemap(data,
+            index=c("group","subgroup"),
+            vSize="value",
+            type="index"
+            ) 
+```
+
+
+## 聚类图
+可以使用geom_encircle()来显示不同的聚类或组。如果数据集有多个弱特征，可以计算出主成分，并使用PC1和PC2作为X轴和Y轴绘制散点图。
+
+可以使用geom_encircle()来包围所需的组。唯一需要注意的是geom_circle()的数据参数。你需要提供一个子集数据框，其中只包含属于该组的观测值（行）作为数据参数。
+
+```{r}
+library(ggplot2)
+library(ggalt)
+library(ggfortify)
+theme_set(theme_classic())
+
+# Compute data with principal components ------------------
+df <- iris[c(1, 2, 3, 4)]
+pca_mod <- prcomp(df)  # compute principal components
+
+# Data frame of principal components ----------------------
+df_pc <- data.frame(pca_mod$x, Species=iris$Species)  # dataframe of principal components
+df_pc_vir <- df_pc[df_pc$Species == "virginica", ]  # df for 'virginica'
+df_pc_set <- df_pc[df_pc$Species == "setosa", ]  # df for 'setosa'
+df_pc_ver <- df_pc[df_pc$Species == "versicolor", ]  # df for 'versicolor'
+summary(df_pc)
+```
+
+```{r}
+# Plot ----------------------------------------------------
+ggplot(df_pc, aes(PC1, PC2, col=Species)) + 
+  geom_point(aes(shape=Species), size=2) +   # draw points
+  labs(title="Iris Clustering", 
+       subtitle="With principal components PC1 and PC2 as X and Y axis",
+       caption="Source: Iris") + 
+  coord_cartesian(xlim = 1.2 * c(min(df_pc$PC1), max(df_pc$PC1)), 
+                  ylim = 1.2 * c(min(df_pc$PC2), max(df_pc$PC2))) +   # change axis limits
+  geom_encircle(data = df_pc_vir, aes(x=PC1, y=PC2)) +   # draw circles
+  geom_encircle(data = df_pc_set, aes(x=PC1, y=PC2)) + 
+  geom_encircle(data = df_pc_ver, aes(x=PC1, y=PC2))
+```
+
+
+
+
+

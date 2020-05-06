@@ -1,0 +1,54 @@
+---
+title: ""
+documentclass: article
+output:
+  html_document:
+    toc: False
+
+---
+
+```{r setup, include=FALSE}
+library(stringr)
+knitr::opts_chunk$set(echo = T)
+qikanxinxi=openxlsx::read.xlsx("C:\\Users\\lca\\OneDrive\\R\\万维书刊\\不收版面费中文核心本科学报\\期刊信息.xlsx")
+n=117
+
+```
+
+
+
+
+<!-- 今天是 **`r Sys.Date()`**，给送大家推荐的期刊是: -->
+### <span style="color:#ef4068;">**`r qikanxinxi$jname[n] `**</span>
+
+
+
+### 影响因子
+**`r qikanxinxi$yinxiangyinzi[n] ` **
+
+
+ <span style="color:#00a480;">**`r str_replace(qikanxinxi$jname[n],'（.*）','')`**</span>
+<span style="color:#00a480;">**`r  if(grepl("CSSCI来源",qikanxinxi$qikanleixing[n])==T)
+{return('C刊')}else{#用print就不行
+
+if(grepl("中文核心",qikanxinxi$qikanleixing[n])==T){return('北大核心')}
+} `！ `r gsub(';','！',str_extract(qikanxinxi$yinxiangyinzi[n],'复合.*?;'))`**</span>
+
+
+
+
+### 期刊性质
+
+`r qikanxinxi$qikanleixing[n]`
+
+**<span style="color:#00a480;">！需要那种类型期刊（核心、普刊、硕士一作、马哲、教育等）的信息可以公众号后台发给我，侧重整理</span>**
+
+### 期刊简介 
+`r qikanxinxi$jianjie_text[n]`
+
+### 征稿要求
+
+<span style="color:black;">`r as.character(qikanxinxi$zhenggaoxinxi[n]) `</span>
+
+![](C:\Users\lca\OneDrive\R\万维书刊\截图_20200330120507.png)
+
